@@ -8,7 +8,14 @@ from dotenv import load_dotenv
 
 load_dotenv() # Load variables from .env file
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Build DATABASE_URL from individual components
+DB_USER = os.getenv("SUPABASE_DB_USER")
+DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
+DB_HOST = os.getenv("SUPABASE_DB_HOST")
+DB_PORT = os.getenv("SUPABASE_DB_PORT", "5432")
+DB_NAME = os.getenv("SUPABASE_DB_NAME")
+
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Create the SQLAlchemy engine
 engine = create_engine(DATABASE_URL)

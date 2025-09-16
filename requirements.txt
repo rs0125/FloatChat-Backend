@@ -7,4 +7,9 @@ python-dotenv
 langchain
 openai
 tiktoken
-faiss-cpu
+# Vector database dependencies
+chromadb
+numpy
+# Additional dependencies for semantic search
+tenacity
+asyncio-timeout

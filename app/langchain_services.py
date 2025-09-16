@@ -87,16 +87,35 @@ def handle_natural_language_query(query_text: str):
     ---
     ## Schema Description:
 
-    ### `floats` table:
-    - Contains metadata for each float (`float_id`, `platform_number`, `deploy_date`, `properties` JSONB).
+    ### `floats` table (MAIN DATA SOURCE):
+    - Contains ALL oceanographic data in the `properties` JSONB column
+    - Fields: `float_id`, `platform_number`, `deploy_date`, `properties` (JSONB)
+    - The `properties` column contains all measurements and metadata
 
-    ### `profiles` table:
-    - Contains scientific measurements (`profile_id`, `float_id`, `profile_time`, `lat`, `lon`, `variable_name`, `variable_value`).
+    ## CRITICAL: First Explore the JSON Structure
+    Before writing complex queries, ALWAYS first run:
+    ```sql
+    SELECT float_id, properties FROM floats LIMIT 5;
+    ```
+    This will show you the actual JSON structure in the properties column.
 
-    ## Important Rules & Patterns:
-    - **Joining:** Join on `floats.float_id = profiles.float_id`.
-    - **Finding the "Latest" Data:** For questions about "current" or "last" location/measurement, find the profile with the maximum `profile_time`.
-    - **Handling Vague Requests:** If the user asks a vague question like "show me everything" or "give me the data", DO NOT use UNION. Instead, provide a helpful summary and return a sample of the first 5 rows from the `floats` table.
+    ## JSON Query Patterns:
+    Based on the actual structure you find, use these patterns:
+    - Extract top-level values: `properties->>'field_name'`
+    - Extract nested values: `properties->'parent'->'child'->>'field'`
+    - Check if key exists: `properties ? 'field_name'`
+    - Get all keys: `jsonb_object_keys(properties)`
+
+    ## Query Strategy:
+    1. **FIRST**: Explore the JSON structure with a simple SELECT
+    2. **THEN**: Write the appropriate JSONB query based on what you find
+    3. **Focus on actual data**: Don't assume field names, discover them
+
+    ## Common ARGO Float Data Fields (check what exists):
+    - Temperature data might be in: `measurements`, `temp`, `temperature`, `TEMP`
+    - Location might be in: `location`, `coordinates`, `lat`, `lon`, `latitude`, `longitude`
+    - Pressure/depth: `pressure`, `depth`, `PRES`
+    - Salinity: `salinity`, `salt`, `PSAL`
 
     ---
     ## Final Output Instructions:
