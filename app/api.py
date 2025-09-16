@@ -1,8 +1,8 @@
-# argo-backend/app/api.py
+# app/api.py
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from . import services, schemas
 from .database import get_db
@@ -10,11 +10,13 @@ from .database import get_db
 router = APIRouter()
 
 @router.get("/floats", response_model=List[schemas.FloatMetadata], tags=["Floats"])
-def get_all_floats(db: Session = Depends(get_db)):
+def get_all_floats(region: Optional[str] = None, db: Session = Depends(get_db)):
     """
-    Fetch metadata for all floats to display on the map.
+    Fetch metadata for all floats. Can be filtered by region.
+    Example: /api/floats?region=atlantic
     """
-    return services.fetch_all_floats(db)
+    floats = services.fetch_all_floats(db=db, region=region)
+    return floats
 
 @router.get("/float/{float_id}/data", response_model=List[schemas.FloatData], tags=["Floats"])
 def get_float_data(float_id: int, db: Session = Depends(get_db)):

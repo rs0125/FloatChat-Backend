@@ -1,49 +1,68 @@
-# argo-backend/app/services.py
+# app/services.py
 
 from sqlalchemy.orm import Session
-from datetime import datetime
+from typing import Optional
+from . import models
 
-# In a real scenario, you'd initialize LangChain here
-# from langchain.chat_models import ChatOpenAI
-# llm = ChatOpenAI(model="gpt-3.5-turbo")
-# print("LangChain LLM Initialized.")
+# --- 1. LANGCHAIN IMPORTS ---
+from langchain_openai import ChatOpenAI
+from langchain_community.agent_toolkits import create_sql_agent
+from langchain_community.utilities.sql_database import SQLDatabase
+from .database import engine # Import your SQLAlchemy engine
+
+# --- 2. AGENT INITIALIZATION ---
+# Initialize the OpenAI language model
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+# Connect LangChain to your PostgreSQL database via the SQLAlchemy engine
+db = SQLDatabase(engine)
+
+# Create the SQL Agent. This agent is specialized for NL-to-SQL tasks.
+# verbose=True lets you see the agent's "thinking" process in your terminal, which is great for debugging.
+sql_agent_executor = create_sql_agent(llm, db=db, agent_type="openai-tools", verbose=True)
 
 
-def fetch_all_floats(db: Session):
+# --- 3. SERVICE FUNCTIONS ---
+
+def fetch_all_floats(db: Session, region: Optional[str] = None):
     """
-    Placeholder to fetch all floats.
+    Fetches all floats, with an optional filter for the region.
     """
-    # TODO: Add logic to query the 'floats' table in your database.
-    # Example: return db.query(models.Float).all()
-    print("SERVICE: Fetching all floats...")
-    return [
-        {"id": 1, "lat": 10.0, "lon": 80.0, "last_updated": datetime.now()},
-        {"id": 2, "lat": 12.5, "lon": 82.3, "last_updated": datetime.now()}
-    ]
+    print(f"SERVICE: Fetching floats. Region filter: {region}")
+    query = db.query(models.Float)
+    if region:
+        query = query.filter(models.Float.region.ilike(f"%{region}%"))
+    return query.all()
 
 def fetch_float_timeseries(db: Session, float_id: int):
     """
-    Placeholder to fetch time-series data for a single float.
+    Fetches time-series data for a specific float.
     """
-    # TODO: Add logic to query the 'measurements' table for a specific float_id.
-    # Example: return db.query(models.Measurement).filter(models.Measurement.float_id == float_id).all()
     print(f"SERVICE: Fetching data for float_id: {float_id}")
-    return [
-        {"timestamp": datetime.now(), "temperature": 28.5, "salinity": 34.1},
-        {"timestamp": datetime.now(), "temperature": 28.2, "salinity": 34.2}
-    ]
+    return db.query(models.Measurement).filter(models.Measurement.float_id == float_id).order_by(models.Measurement.timestamp.asc()).all()
 
 def handle_natural_language_query(query_text: str):
     """
-    Placeholder for the LangChain orchestration logic.
+    This function now uses the LangChain SQL agent to process the query.
     """
-    # TODO: Implement the LangChain SQL Agent or Router Agent here.
-    # - This agent will take the query_text.
-    # - It will decide whether to generate SQL or do a semantic search.
-    # - It will return a natural language response and/or structured data.
     print(f"SERVICE: Processing NL query: '{query_text}' with LangChain...")
-    return {
-        "query": query_text,
-        "response": f"This is a placeholder response for your query about '{query_text}'. The real LangChain agent will answer this.",
-        "data": [] # The agent could also return structured data
-    }
+    
+    # Use a prompt that gives the LLM context about the schema and task
+    prompt = f"""
+    Based on the database schema, answer the following user question: {query_text}.
+    When querying for floats, the table is called 'floats'.
+    When querying for measurements, the table is called 'measurements'.
+    The 'wmo_id' is the unique identifier for a float.
+    """
+    
+    try:
+        # The agent.run() method is where the magic happens!
+        # It understands the prompt, writes SQL, executes it, and returns a natural language response.
+        result = sql_agent_executor.invoke({"input": prompt})
+        
+        # The actual answer is in the 'output' key of the result dictionary
+        return {"query": query_text, "response": result.get("output")}
+
+    except Exception as e:
+        # Return an error message if the agent fails
+        return {"error": f"An error occurred with the LangChain agent: {e}"}
