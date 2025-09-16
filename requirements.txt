@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+python-dotenv
+# LangChain dependencies
+langchain
+openai
+tiktoken
+faiss-cpu
