@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware # <-- 1. IMPORT THIS
-from . import api
+from . import api, api_semantic
 
 app = FastAPI(
     title="ARGO Float Data API",
@@ -28,6 +28,8 @@ app.add_middleware(
 
 # Include the routes defined in api.py
 app.include_router(api.router, prefix="/api")
+# Include semantic search routes
+app.include_router(api_semantic.router)
 
 @app.get("/")
 def read_root():

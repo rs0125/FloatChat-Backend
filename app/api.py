@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from . import services, schemas
+from . import langchain_services, schemas
 from .database import get_db
 
 router = APIRouter()
@@ -15,7 +15,7 @@ def get_all_floats(db: Session = Depends(get_db)):
     Fetch all floats and their latest known position for the map.
     """
     # <-- CHANGED: No longer takes a 'region' parameter.
-    floats = services.fetch_all_floats(db=db)
+    floats = langchain_services.fetch_all_floats(db=db)
     return floats
 
 @router.get("/float/{float_id}/profiles", response_model=List[schemas.ProfileData], tags=["Floats"])
@@ -27,7 +27,7 @@ def get_float_profiles(float_id: str, variable: Optional[str] = None, db: Sessio
     Example: /api/float/some_id/profiles?variable=TEMP
     """
     # <-- CHANGED: Calls the new service function.
-    profiles = services.fetch_float_profiles(db, float_id=float_id, variable=variable)
+    profiles = langchain_services.fetch_float_profiles(db, float_id=float_id, variable=variable)
     if not profiles:
         raise HTTPException(status_code=404, detail="Profile data not found for this float")
     return profiles
@@ -37,4 +37,4 @@ def query_floats(query: schemas.NLQuery):
     """
     Send a natural language query to the LangChain service. (Unchanged)
     """
-    return services.handle_natural_language_query(query.text)
+    return langchain_services.handle_natural_language_query(query.text)
